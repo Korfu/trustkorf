@@ -56,6 +56,10 @@ When a category is unavailable (e.g., no type checker, no e2e framework, no lint
 - Build adjusted: 0.20 / 0.90 = 0.222
 - Coverage adjusted: 0.15 / 0.90 = 0.167
 
+### Compiled Languages: Build Covers Type Safety
+
+For compiled languages (C#, Go, Rust, Java), the build IS the type check. When `typeCheckCommand` is `"none"` and a `buildCommand` exists, the type check weight is redistributed normally — a passing build already proves type safety. Don't flag the missing type checker as a gap.
+
 ### Handling No Tests
 
 If no test command is configured or no tests exist:

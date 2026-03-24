@@ -89,11 +89,15 @@ For Node.js, check `package.json` scripts for actual test/lint/build commands. F
    # If no dry-run available, just run it and check it discovers the expected files
    ```
 
-5. **Handle split test suites:** Some projects intentionally separate unit tests from integration/eval tests (different env requirements, external dependencies, speed). When you detect this:
-   - Set `testCommand` to run unit tests (fast, no external deps)
-   - Note integration/eval commands in profile comments — the evidence-collector can run both
+5. **Handle split test suites:** If only integration/eval tests exist (needing external services), keep `testCommand` as-is and note it in `testScopeNotes`. Tests failing due to missing infrastructure is not a code quality issue.
 
-#### 2d. Detect Framework-Specific Patterns
+#### 2d. Detect Duplicate Commands
+
+Avoid running the same check twice:
+- **Lint includes type check:** If `npm run lint` already runs `tsc --noEmit`, set `typeCheckCommand` to `"none"`.
+- **Compiled languages:** Build IS the type check (C#, Go, Rust, Java). `typeCheckCommand` should stay `"none"`.
+
+#### 2e. Detect Framework-Specific Patterns
 
 - Playwright/Cypress config files → set `e2eCommand` and `e2eFramework`
 - `angular.json` → Angular CLI commands (`ng test`, `ng build`, `ng lint`)
@@ -101,9 +105,9 @@ For Node.js, check `package.json` scripts for actual test/lint/build commands. F
 - `playwright.config.*` → Playwright e2e
 - `cypress.config.*` → Cypress e2e
 
-#### 2e. Check CI Configuration
+#### 2f. Check CI Configuration (optional)
 
-`.github/workflows/*.yml`, `Makefile`, `Dockerfile` may reveal the actual commands used by the team. CI configs are often the source of truth — if CI runs a different test command than what you detected, prefer the CI version.
+If the detected commands seem incomplete, CI config files may reveal the actual commands the team uses.
 
 ### Step 3: Produce Stack Profile
 

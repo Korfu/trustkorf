@@ -20,8 +20,8 @@ packageManager="none"
 
 # --- Language & Tool Detection ---
 
-# C# / .NET
-if ls "$PROJECT_DIR"/*.sln 2>/dev/null 1>&2 || ls "$PROJECT_DIR"/*.csproj 2>/dev/null 1>&2 || find "$PROJECT_DIR" -maxdepth 3 -name "*.csproj" -print -quit 2>/dev/null | grep -q .; then
+# C# / .NET — require root-level .sln or .csproj (not recursive — avoids false positives on workspace dirs)
+if ls "$PROJECT_DIR"/*.sln 2>/dev/null 1>&2 || ls "$PROJECT_DIR"/*.csproj 2>/dev/null 1>&2; then
   language="csharp"
   testCommand="dotnet test"
   typeCheckCommand="none"
@@ -76,17 +76,35 @@ if [ -f "$PROJECT_DIR/package.json" ]; then
 fi
 
 # Python
-if [ -f "$PROJECT_DIR/pyproject.toml" ] || [ -f "$PROJECT_DIR/setup.py" ] || [ -f "$PROJECT_DIR/requirements.txt" ]; then
+if [ -f "$PROJECT_DIR/pyproject.toml" ] || [ -f "$PROJECT_DIR/setup.py" ] || [ -f "$PROJECT_DIR/requirements.txt" ] || [ -f "$PROJECT_DIR/Pipfile" ]; then
   if [ "$language" = "unknown" ]; then
     language="python"
     testCommand="pytest"
     packageManager="pip"
 
-    if [ -f "$PROJECT_DIR/poetry.lock" ]; then
+    if [ -f "$PROJECT_DIR/uv.lock" ]; then
+      packageManager="uv"
+    elif [ -f "$PROJECT_DIR/poetry.lock" ]; then
       packageManager="poetry"
-    elif [ -f "$PROJECT_DIR/Pipfile.lock" ]; then
+    elif [ -f "$PROJECT_DIR/Pipfile.lock" ] || [ -f "$PROJECT_DIR/Pipfile" ]; then
       packageManager="pipenv"
     fi
+  fi
+fi
+
+# Python tool detection (mypy, ruff, flake8) from pyproject.toml
+if [ "$language" = "python" ] && [ -f "$PROJECT_DIR/pyproject.toml" ]; then
+  # Type checker
+  if grep -q '\[tool\.mypy\]' "$PROJECT_DIR/pyproject.toml" 2>/dev/null; then
+    typeCheckCommand="mypy ."
+  elif grep -q '\[tool\.pyright\]' "$PROJECT_DIR/pyproject.toml" 2>/dev/null; then
+    typeCheckCommand="pyright"
+  fi
+  # Linter
+  if grep -q '\[tool\.ruff\]' "$PROJECT_DIR/pyproject.toml" 2>/dev/null; then
+    lintCommand="ruff check ."
+  elif grep -q '\[tool\.flake8\]' "$PROJECT_DIR/pyproject.toml" 2>/dev/null || [ -f "$PROJECT_DIR/.flake8" ]; then
+    lintCommand="flake8"
   fi
 fi
 
@@ -185,18 +203,32 @@ if [ -f "$PROJECT_DIR/svelte.config.js" ]; then
   framework="sveltekit"
 fi
 
+if [ -f "$PROJECT_DIR/nest-cli.json" ]; then
+  framework="nestjs"
+elif [ -f "$PROJECT_DIR/package.json" ] && command -v jq &>/dev/null; then
+  if jq -e '.dependencies["@nestjs/core"] // .devDependencies["@nestjs/core"]' "$PROJECT_DIR/package.json" &>/dev/null; then
+    framework="nestjs"
+  fi
+fi
+
 if [ -f "$PROJECT_DIR/manage.py" ]; then
   framework="django"
-  testCommand="python manage.py test"
+  # If pyproject.toml has pytest config, prefer pytest (pytest-django pattern)
+  # Otherwise fall back to manage.py test
+  if [ -f "$PROJECT_DIR/pyproject.toml" ] && grep -q '\[tool\.pytest' "$PROJECT_DIR/pyproject.toml" 2>/dev/null; then
+    testCommand="pytest"
+  else
+    testCommand="python manage.py test"
+  fi
 fi
 
 if [ -f "$PROJECT_DIR/config/routes.rb" ]; then
   framework="rails"
 fi
 
-# ASP.NET Core detection
+# ASP.NET Core detection — only recurse if we already confirmed this is a .NET project
 if [ "$language" = "csharp" ]; then
-  if find "$PROJECT_DIR" -maxdepth 3 -name "*.csproj" -exec grep -l "Microsoft.AspNetCore" {} + 2>/dev/null | grep -q .; then
+  if grep -rl "Microsoft.AspNetCore\|Microsoft.NET.Sdk.Web" "$PROJECT_DIR"/*.csproj "$PROJECT_DIR"/*/*.csproj 2>/dev/null | grep -q .; then
     framework="aspnet-core"
   fi
 fi
@@ -212,7 +244,8 @@ for cfg in \
   .jest.config.js .jest.config.ts \
   ava.config.js ava.config.cjs ava.config.mjs \
   .mocharc.yml .mocharc.json .mocharc.js \
-  pytest.ini setup.cfg \
+  pytest.ini setup.cfg tox.ini \
+  .runsettings \
   .rspec; do
   if [ -f "$PROJECT_DIR/$cfg" ]; then
     testConfigFile="$cfg"

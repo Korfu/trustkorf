@@ -35,6 +35,7 @@
 | `config/routes.rb` | Rails | `bundle exec rspec` or `rails test` |
 | `Program.cs` + `*.csproj` with `Microsoft.AspNetCore` | ASP.NET Core | `dotnet test`, `dotnet build` |
 | `Startup.cs` or `Program.cs` with WebApplication | ASP.NET Core | `dotnet test`, `dotnet build` |
+| `nest-cli.json` or `@nestjs/core` in package.json | NestJS | `nest build`, `nest test` (usually jest) |
 
 ## E2E Framework Detection
 
@@ -54,9 +55,9 @@ These config files control which test files the runner discovers. If the config 
 |---|---|---|
 | vitest | `vitest.config.{ts,js,mjs,mts}`, `vite.config.*` | `test.include`, `test.exclude`, `test.dir` |
 | jest | `jest.config.{ts,js,mjs,cjs}`, `package.json:jest` | `testMatch`, `testPathPattern`, `roots`, `testPathIgnorePatterns` |
-| pytest | `pyproject.toml:[tool.pytest.ini_options]`, `pytest.ini`, `setup.cfg` | `testpaths`, `python_files`, `python_classes`, `python_functions` |
+| pytest | `pyproject.toml:[tool.pytest.ini_options]`, `pytest.ini`, `setup.cfg`, `tox.ini` | `testpaths`, `python_files`, `python_classes`, `python_functions` |
 | go test | N/A (package paths in command) | Package path argument (e.g., `./...` vs `./pkg/...`) |
-| dotnet test | `*.sln`, `*.csproj` | Solution file determines which test projects run |
+| dotnet test | `*.sln`, `*.csproj`, `.runsettings` | Solution file determines which test projects run; `.runsettings` controls filters |
 | rspec | `.rspec`, `spec/spec_helper.rb` | `--pattern`, `--default-path` |
 | cargo test | `Cargo.toml` | `[[test]]` sections, `#[cfg(test)]` modules |
 | mocha | `.mocharc.{yml,json,js}` | `spec`, `recursive`, `ignore` |
@@ -74,7 +75,9 @@ When signal files don't reveal the full picture, check CI configs:
 | `.gitlab-ci.yml` | `script:` entries |
 | `Jenkinsfile` | `sh` steps |
 | `azure-pipelines.yml` | `script:` entries |
+| `operations/*.yml`, `pipelines/*.yml` | Azure DevOps pipelines in subdirectories (common in .NET projects) |
 | `bitbucket-pipelines.yml` | `script:` entries |
+| `.circleci/config.yml` | `run:` steps |
 
 ## Package Manager Detection
 
@@ -85,6 +88,8 @@ When signal files don't reveal the full picture, check CI configs:
 | `pnpm-lock.yaml` | pnpm |
 | `bun.lockb` | bun |
 | `Pipfile.lock` | pipenv |
+| `Pipfile` (without lock) | pipenv |
+| `uv.lock` | uv |
 | `poetry.lock` | poetry |
 | `Cargo.lock` | cargo |
 | `go.sum` | go modules |
