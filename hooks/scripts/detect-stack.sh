@@ -10,6 +10,7 @@ PROJECT_DIR="${CLAUDE_PROJECT_DIR:-.}"
 language="unknown"
 framework="none"
 testCommand="none"
+testConfigFile="none"
 typeCheckCommand="none"
 lintCommand="none"
 buildCommand="none"
@@ -200,6 +201,46 @@ if [ "$language" = "csharp" ]; then
   fi
 fi
 
+# --- Test Runner Config Detection ---
+# Find the config file that controls test scope (include/exclude patterns).
+# This is critical — the test command may work, but the runner config
+# may restrict which files it picks up.
+
+for cfg in \
+  vitest.config.ts vitest.config.js vitest.config.mjs vitest.config.mts \
+  jest.config.ts jest.config.js jest.config.mjs jest.config.cjs \
+  .jest.config.js .jest.config.ts \
+  ava.config.js ava.config.cjs ava.config.mjs \
+  .mocharc.yml .mocharc.json .mocharc.js \
+  pytest.ini setup.cfg \
+  .rspec; do
+  if [ -f "$PROJECT_DIR/$cfg" ]; then
+    testConfigFile="$cfg"
+    break
+  fi
+done
+
+# Check for inline config in package.json (jest or vitest key)
+if [ "$testConfigFile" = "none" ] && [ -f "$PROJECT_DIR/package.json" ] && command -v jq &>/dev/null; then
+  if jq -e '.jest' "$PROJECT_DIR/package.json" &>/dev/null; then
+    testConfigFile="package.json:jest"
+  fi
+fi
+
+# Check for pytest config in pyproject.toml
+if [ "$testConfigFile" = "none" ] && [ -f "$PROJECT_DIR/pyproject.toml" ]; then
+  if grep -q '\[tool\.pytest' "$PROJECT_DIR/pyproject.toml" 2>/dev/null; then
+    testConfigFile="pyproject.toml:tool.pytest"
+  fi
+fi
+
+# Check for test config in Cargo.toml
+if [ "$testConfigFile" = "none" ] && [ -f "$PROJECT_DIR/Cargo.toml" ]; then
+  if grep -q '\[\[test\]\]' "$PROJECT_DIR/Cargo.toml" 2>/dev/null; then
+    testConfigFile="Cargo.toml:test"
+  fi
+fi
+
 # --- E2E Detection ---
 
 if [ -f "$PROJECT_DIR/playwright.config.ts" ] || [ -f "$PROJECT_DIR/playwright.config.js" ]; then
@@ -219,6 +260,7 @@ cat <<EOF
   "language": "$language",
   "framework": "$framework",
   "testCommand": "$testCommand",
+  "testConfigFile": "$testConfigFile",
   "typeCheckCommand": "$typeCheckCommand",
   "lintCommand": "$lintCommand",
   "buildCommand": "$buildCommand",

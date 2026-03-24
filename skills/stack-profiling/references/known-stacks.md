@@ -46,6 +46,22 @@
 | `e2e/` with playwright dependency | Playwright | `npx playwright test` |
 | `*.spec.ts` with Playwright imports | Playwright | `npx playwright test` |
 
+## Test Runner Config Files
+
+These config files control which test files the runner discovers. If the config restricts scope (via `include`, `testMatch`, `testpaths`, etc.), tests outside that scope are silently skipped.
+
+| Runner | Config Files | Scope-Controlling Keys |
+|---|---|---|
+| vitest | `vitest.config.{ts,js,mjs,mts}`, `vite.config.*` | `test.include`, `test.exclude`, `test.dir` |
+| jest | `jest.config.{ts,js,mjs,cjs}`, `package.json:jest` | `testMatch`, `testPathPattern`, `roots`, `testPathIgnorePatterns` |
+| pytest | `pyproject.toml:[tool.pytest.ini_options]`, `pytest.ini`, `setup.cfg` | `testpaths`, `python_files`, `python_classes`, `python_functions` |
+| go test | N/A (package paths in command) | Package path argument (e.g., `./...` vs `./pkg/...`) |
+| dotnet test | `*.sln`, `*.csproj` | Solution file determines which test projects run |
+| rspec | `.rspec`, `spec/spec_helper.rb` | `--pattern`, `--default-path` |
+| cargo test | `Cargo.toml` | `[[test]]` sections, `#[cfg(test)]` modules |
+| mocha | `.mocharc.{yml,json,js}` | `spec`, `recursive`, `ignore` |
+| ava | `ava.config.{js,cjs,mjs}`, `package.json:ava` | `files`, `ignoredByWatcher` |
+
 ## CI Configuration Detection
 
 When signal files don't reveal the full picture, check CI configs:

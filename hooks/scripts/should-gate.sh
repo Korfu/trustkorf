@@ -25,9 +25,12 @@ if [ -z "$staged" ] && [ -z "$unstaged" ] && [ -z "$untracked" ]; then
   exit 0
 fi
 
-# There are uncommitted code changes — trigger the deployment gate
+# There are uncommitted code changes — remind Claude (non-blocking)
+# Using "allow" instead of "block" to avoid infinite Stop-hook loops.
+# A "block" decision on Stop fires after every response, creating an
+# unbreakable cycle when uncommitted changes always exist mid-conversation.
 cat <<'EOF'
-{"decision": "block", "reason": "Uncommitted code changes detected", "systemMessage": "trustKORF: You MUST invoke the trustkorf:deployment-gate skill to validate all changes before stopping. Do not commit or claim completion without a passing deployment gate."}
+{"decision": "allow", "reason": "Uncommitted code changes detected", "systemMessage": "trustKORF reminder: There are uncommitted code changes. Consider running the deployment-gate skill before committing or claiming completion."}
 EOF
 
 exit 0
