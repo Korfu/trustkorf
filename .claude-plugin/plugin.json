@@ -7,5 +7,7 @@
     "url": "https://github.com/Korfu"
   },
   "license": "MIT",
-  "homepage": "https://github.com/Korfu/trustkorf"
+  "homepage": "https://github.com/Korfu/trustkorf",
+  "repository": "https://github.com/Korfu/trustkorf",
+  "keywords": ["quality-assurance", "testing", "deployment-gate", "confidence-scoring"]
 }
