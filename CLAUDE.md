@@ -40,7 +40,6 @@ Defined in `skills/continuous-validation/references/scoring-model.md`. Key rules
 - `skills/stack-profiling/references/known-stacks.md` — signal file matrix, framework detection, test runner config files, CI detection, package managers
 - `tests/test-scenarios.yaml` — regression test definitions with expected outcomes (true positives, false positive checks, hook robustness, stack detection)
 - `.claude-plugin/plugin.json` — plugin manifest (name, version, description)
-- `.claude-plugin/marketplace.json` — local marketplace definition
 
 ## Testing the Plugin
 
