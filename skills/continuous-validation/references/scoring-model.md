@@ -105,6 +105,7 @@ If no test command is configured or no tests exist:
 2. Check if corresponding test files exist (using naming conventions: `foo.ts` → `foo.test.ts`, `foo.spec.ts`, `test_foo.py`, `FooTest.cs`, etc.)
 3. Check if test files contain tests that reference the changed functions
 **Score:** `(functions_with_tests / total_changed_functions) × 100`
+**Zero changed functions:** If no functions were added or modified (e.g., comment-only, whitespace-only, or config changes), score = 100. There is nothing to cover, so coverage is trivially complete. Do NOT score 0 for this case.
 
 ### E2E Passing
 

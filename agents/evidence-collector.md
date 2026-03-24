@@ -102,7 +102,7 @@ Evidence:
     output_summary: "[first 500 chars of relevant output]"
 
   coverage:
-    changedFunctions: [number]
+    changedFunctions: [number]    # if 0, score is 100 (nothing to cover)
     coveredFunctions: [number]
     uncoveredFiles: ["file1.ts", "file2.ts"]
     score: [0-100]
