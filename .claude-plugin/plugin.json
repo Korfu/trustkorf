@@ -1,0 +1,5 @@
+{
+  "name": "trustkorf",
+  "version": "1.0.0",
+  "description": "Automated quality assurance that ensures code changes are deployment-ready through evidence-based confidence scoring, stack-adaptive validation, and test generation. Install it and forget about it — trustKORF embeds itself into the development flow."
+}

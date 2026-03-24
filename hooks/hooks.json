@@ -1,0 +1,29 @@
+{
+  "description": "trustKORF quality assurance hooks - Stop hook triggers deployment gate, SessionStart detects tech stack",
+  "hooks": {
+    "Stop": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/should-gate.sh\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/detect-stack.sh\"",
+            "timeout": 15
+          }
+        ]
+      }
+    ]
+  }
+}
