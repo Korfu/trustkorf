@@ -13,12 +13,15 @@ if ! git -C "$PROJECT_DIR" rev-parse --is-inside-work-tree &>/dev/null; then
   exit 0
 fi
 
-# Check for uncommitted changes (staged + unstaged)
-staged=$(git -C "$PROJECT_DIR" diff --cached --stat 2>/dev/null || echo "")
-unstaged=$(git -C "$PROJECT_DIR" diff --stat 2>/dev/null || echo "")
+# Code file extension filter — shared across all change types
+CODE_EXT='\.(ts|tsx|js|jsx|py|go|rs|cs|java|kt|rb|php|ex|exs|vue|svelte)$'
+
+# Check for uncommitted changes (staged + unstaged) in code files only
+staged=$(git -C "$PROJECT_DIR" diff --cached --name-only 2>/dev/null | grep -E "$CODE_EXT" || echo "")
+unstaged=$(git -C "$PROJECT_DIR" diff --name-only 2>/dev/null | grep -E "$CODE_EXT" || echo "")
 
 # Check for untracked files that look like code (not config or docs)
-untracked=$(git -C "$PROJECT_DIR" ls-files --others --exclude-standard 2>/dev/null | grep -E '\.(ts|tsx|js|jsx|py|go|rs|cs|java|kt|rb|php|ex|exs|vue|svelte)$' || echo "")
+untracked=$(git -C "$PROJECT_DIR" ls-files --others --exclude-standard 2>/dev/null | grep -E "$CODE_EXT" || echo "")
 
 if [ -z "$staged" ] && [ -z "$unstaged" ] && [ -z "$untracked" ]; then
   # No code changes — let Claude stop normally

@@ -1,0 +1,309 @@
+# trustKORF Plugin Test Scenarios
+#
+# Regression test definitions for the deployment gate flow.
+# Each scenario describes a change type, the expected behavior of each
+# plugin component, and the expected gate decision.
+#
+# To run: reproduce the scenario in any project matching the described
+# stack, then verify each "expect" field matches actual behavior.
+#
+# Legend:
+#   gate_decision: PASS | BLOCK | NO_GATE (hook should not trigger)
+#   score_range: [min, max] — expected composite score range
+
+# ============================================================
+# SECTION 1: TRUE POSITIVES — gate should correctly BLOCK
+# ============================================================
+
+true_positives:
+
+  - name: new_function_no_tests
+    description: Add a new exported function without writing any tests
+    stack: typescript
+    change:
+      type: add_function
+      file_type: source
+      details: Add exported utility function to existing module
+    expect:
+      stop_hook_fires: true
+      type_check: pass
+      build: pass
+      test_coverage_of_change: 0
+      score_range: [40, 60]
+      gate_decision: BLOCK
+      next_action: dispatch_test_writer
+    notes: >
+      Even with types and build passing, missing test coverage on new code
+      should keep the score well below 90. The test-writer agent should be
+      dispatched to create tests for the new function.
+
+  - name: type_annotation_error
+    description: Change a return type annotation to wrong type (number → string)
+    stack: typescript
+    change:
+      type: modify_type
+      file_type: source
+      details: Change return type of existing function, body still returns original type
+    expect:
+      stop_hook_fires: true
+      type_check: fail
+      build: fail
+      score_range: [0, 10]
+      gate_decision: BLOCK
+      next_action: dispatch_fix_advisor
+    notes: >
+      Both tsc --noEmit and build should catch TS2322. Score should be near 0.
+      Fix-advisor should identify the type mismatch and recommend reverting
+      the annotation.
+
+  - name: breaking_signature_change
+    description: Add required parameter to function that has existing callers and tests
+    stack: typescript
+    change:
+      type: modify_signature
+      file_type: source
+      details: Add required parameter to existing exported function
+    expect:
+      stop_hook_fires: true
+      type_check: fail
+      build: fail
+      tests_would_fail: true
+      score_range: [0, 10]
+      gate_decision: BLOCK
+      next_action: dispatch_fix_advisor
+    notes: >
+      Type checker catches TS2554 at all call sites. Tests also fail at
+      runtime (TypeError on undefined). Two independent signals confirm
+      the regression. Fix-advisor should suggest making param optional
+      or updating all call sites.
+
+  - name: logic_bug_in_new_method
+    description: Add method with subtle off-by-one bug (> instead of >=)
+    stack: any_compiled
+    change:
+      type: add_method
+      file_type: source
+      details: New public method with boundary condition bug
+    expect:
+      stop_hook_fires: true
+      type_check: pass
+      build: pass
+      test_coverage_of_change: 0
+      score_range: [40, 60]
+      gate_decision: BLOCK
+      next_action: dispatch_test_writer
+    notes: >
+      Static analysis won't catch a logic bug. But the coverage gap forces
+      the test-writer agent to create boundary tests, which WILL expose
+      the off-by-one error. The bug is caught indirectly through the
+      test-writing pipeline.
+
+# ============================================================
+# SECTION 2: FALSE POSITIVE CHECKS — gate should NOT block
+# ============================================================
+
+false_positive_checks:
+
+  - name: config_only_change
+    description: Modify package.json metadata, README, or config files only
+    stack: any
+    change:
+      type: modify_config
+      file_type: config
+      details: Change description, keywords, or other non-code metadata
+    expect:
+      stop_hook_fires: false
+      gate_decision: NO_GATE
+    verified: true
+    notes: >
+      The stop hook filters ALL change types (staged, unstaged, untracked) by
+      code file extensions (.ts, .js, .py, .cs, etc). Config files like
+      package.json, README.md, tsconfig.json, .env.example do not match and
+      should not trigger the gate.
+
+  - name: comment_only_change
+    description: Add or modify comments in a source file, no logic changes
+    stack: any_with_code
+    change:
+      type: add_comment
+      file_type: source
+      details: Add a comment or modify whitespace in .ts/.js/.py/.cs file
+    expect:
+      stop_hook_fires: true
+      type_check: pass
+      build: pass
+      changed_functions: 0
+      gate_decision: PASS
+    scoring_notes: >
+      IMPORTANT EDGE CASE: When zero functions are changed, the coverage
+      category should score 100 (nothing to cover) or be skipped entirely.
+      If the scoring model gives 0 for "no changed functions", this creates
+      a false positive that blocks harmless comment edits. The scoring model
+      must handle the zero-denominator case.
+
+  - name: well_tested_feature
+    description: Add a new function WITH comprehensive tests
+    stack: typescript
+    change:
+      type: add_function_with_tests
+      file_type: source_and_test
+      details: New exported function plus corresponding test file with 3+ test cases
+    expect:
+      stop_hook_fires: true
+      type_check: pass
+      build: pass
+      tests_pass: true
+      test_coverage_of_change: 100
+      score_range: [90, 100]
+      gate_decision: PASS
+    notes: >
+      The happy path. A well-typed function with passing tests and full
+      coverage should sail through the gate. If this gets blocked, the
+      scoring model is too strict.
+
+  - name: safe_variable_rename
+    description: Rename local variables inside a function, no behavior change
+    stack: any_with_code
+    change:
+      type: rename_variable
+      file_type: source
+      details: Rename local vars inside method body, same logic and return values
+    expect:
+      stop_hook_fires: true
+      type_check: pass
+      build: pass
+    scoring_notes: >
+      EDGE CASE: The function body changed, so coverage assessment sees a
+      "changed function". If no tests exist for that function, coverage
+      scores 0 and the gate may block. This is arguably correct — the
+      function had no tests BEFORE the rename either. The gate is surfacing
+      a pre-existing gap, not a regression. However, the fix loop (test-writer)
+      would create tests that pass on the first try, so the gate would
+      ultimately PASS after one fix loop. Whether this is acceptable friction
+      for a rename is a design decision.
+
+# ============================================================
+# SECTION 3: HOOK ROBUSTNESS — edge cases that should not crash
+# ============================================================
+
+hook_robustness:
+
+  - name: non_git_directory
+    description: Run hooks in a directory that is not a git repository
+    expect:
+      detect_stack: returns valid JSON with all defaults
+      should_gate: exits 0, no output
+
+  - name: nonexistent_directory
+    description: Run hooks with CLAUDE_PROJECT_DIR pointing to nonexistent path
+    expect:
+      detect_stack: returns valid JSON with all defaults, no crash
+      should_gate: exits 0, no output, no crash
+
+  - name: empty_git_repo
+    description: Run hooks in a freshly git-init'd empty directory
+    expect:
+      detect_stack: returns valid JSON with all defaults
+      should_gate: exits 0, no output
+
+  - name: untracked_docs_only
+    description: Git repo with only untracked .md/.txt files
+    expect:
+      should_gate: exits 0, no output (code extension filter excludes docs)
+
+  - name: untracked_code_file
+    description: Git repo with untracked .ts/.py/.cs file
+    expect:
+      should_gate: fires with allow decision and reminder JSON
+
+  - name: json_output_validity
+    description: All detect-stack.sh output must be valid JSON
+    expect:
+      detect_stack: output passes jq validation on any input directory
+
+  - name: performance
+    description: Both hooks must complete within their timeout
+    expect:
+      detect_stack: completes in under 1 second (timeout is 15s)
+      should_gate: completes in under 1 second (timeout is 10s)
+
+# ============================================================
+# SECTION 4: STACK DETECTION — language/framework accuracy
+# ============================================================
+
+stack_detection:
+
+  - name: typescript_with_vitest
+    signals: [package.json, tsconfig.json, vitest.config.ts]
+    expect:
+      language: typescript
+      testCommand: npm test
+      testConfigFile: vitest.config.ts
+      typeCheckCommand: npx tsc --noEmit
+
+  - name: typescript_with_jest
+    signals: [package.json, tsconfig.json, jest.config.js]
+    expect:
+      language: typescript
+      testCommand: npm test
+      testConfigFile: jest.config.js
+
+  - name: nestjs_project
+    signals: [package.json, tsconfig.json, nest-cli.json]
+    expect:
+      framework: nestjs
+
+  - name: csharp_with_sln
+    signals: ["*.sln"]
+    expect:
+      language: csharp
+      testCommand: dotnet test
+      buildCommand: dotnet build
+
+  - name: python_with_pytest
+    signals: [pyproject.toml, requirements.txt]
+    pyproject_contains: "[tool.pytest"
+    expect:
+      language: python
+      testCommand: pytest
+      testConfigFile: "pyproject.toml:tool.pytest"
+
+  - name: python_with_mypy_and_ruff
+    signals: [pyproject.toml]
+    pyproject_contains: ["[tool.mypy]", "[tool.ruff]"]
+    expect:
+      typeCheckCommand: "mypy ."
+      lintCommand: "ruff check ."
+
+  - name: django_with_pytest
+    signals: [manage.py, pyproject.toml]
+    pyproject_contains: "[tool.pytest"
+    expect:
+      framework: django
+      testCommand: pytest
+
+  - name: django_without_pytest
+    signals: [manage.py]
+    expect:
+      framework: django
+      testCommand: python manage.py test
+
+  - name: go_project
+    signals: [go.mod]
+    expect:
+      language: go
+      testCommand: go test ./...
+      typeCheckCommand: go vet ./...
+
+  - name: rust_project
+    signals: [Cargo.toml]
+    expect:
+      language: rust
+      testCommand: cargo test
+      lintCommand: cargo clippy
+
+  - name: parent_directory_not_detected
+    description: A workspace root containing child projects should detect as unknown
+    signals: [] # no root-level .sln, package.json, etc.
+    expect:
+      language: unknown
