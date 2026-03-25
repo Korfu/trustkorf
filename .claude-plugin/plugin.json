@@ -4,6 +4,7 @@
   "description": "Automated quality assurance that ensures code changes are deployment-ready through evidence-based confidence scoring, stack-adaptive validation, and test generation. Install it and forget about it — trustKORF embeds itself into the development flow.",
   "author": {
     "name": "Konrad Korf",
+    "email": "konrad.korf@gmail.com",
     "url": "https://github.com/Korfu"
   },
   "license": "MIT",
