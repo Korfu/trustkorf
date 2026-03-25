@@ -2,6 +2,11 @@
 
 Automated quality assurance for Claude Code. Install it and forget about it — trustKORF embeds itself into the development flow and ensures code changes are deployment-ready.
 
+## Installation
+
+1. Add the marketplace: `/plugin marketplace add Korfu/korfu-marketplace`
+2. Install trustKORF: `/plugin install trustkorf@korfu-marketplace`
+
 ## What It Does
 
 trustKORF provides evidence-based confidence scoring for your code changes. It detects your tech stack, runs the appropriate quality checks, computes a weighted confidence score, and blocks deployment if the score is too low.
@@ -59,10 +64,6 @@ Frameworks: Next.js, Angular, SvelteKit, Django, Rails, ASP.NET Core, and more.
 
 E2E: Playwright, Cypress.
 
-## Installation
-
-1. Add the marketplace: `/plugin marketplace add Korfu/korfu-marketplace`
-2. Install trustKORF: `/plugin install trustkorf@korfu-marketplace`
 
 ## Manual Validation
 
