@@ -61,20 +61,8 @@ E2E: Playwright, Cypress.
 
 ## Installation
 
-Add trustKORF as a local plugin in Claude Code:
-
-```bash
-# From the trustkorf directory
-claude plugins add ./path/to/trustkorf
-```
-
-Or add it to your `.claude/settings.json`:
-
-```json
-{
-  "plugins": ["./path/to/trustkorf"]
-}
-```
+1. Add the marketplace: `/plugin marketplace add Korfu/korfu-marketplace`
+2. Install trustKORF: `/plugin install trustkorf@korfu-marketplace`
 
 ## Manual Validation
 
